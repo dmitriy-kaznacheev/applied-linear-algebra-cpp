@@ -4,8 +4,6 @@
 
 ## Цель
 
-Пройти книгу от начала до конца, реализуя каждый пример на C++ вместо Python/NumPy. Это даёт:
-
 - глубокое понимание линейной алгебры на уровне типов, памяти и алгоритмов;
 - практику промышленной C++-разработки с современными инструментами;
 - сравнение поведения Eigen с NumPy (численная проверка корректности).
@@ -16,7 +14,7 @@
 |---|---|
 | Язык | C++17 |
 | Линейная алгебра | [Eigen](https://gitlab.com/libeigen/eigen) (подмодуль) |
-| Визуализация | [gnuplot-iostream](https://github.com/dstahlke/gnuplot-iostream) (подмодуль) + gnuplot |
+| Визуализация | [gnuplot-iostream](https://github.com/dstahlke/gnuplot-iostream) (подмодуль) + gnuplot с терминалом `qt` |
 | Тесты | Google Test (через CMake FetchContent) |
 | Сборка | CMake ≥ 3.16 + Ninja |
 | CI | GitHub Actions (gcc/clang × Debug/Release) |
@@ -24,9 +22,15 @@
 На Ubuntu/Debian:
 
 ```bash
+# Для сборки и тестов
 sudo apt-get install -y build-essential cmake ninja-build \
-    libboost-iostreams-dev libboost-system-dev libboost-filesystem-dev \
-    gnuplot-nox
+    libboost-iostreams-dev libboost-system-dev libboost-filesystem-dev
+
+# Для интерактивных графиков (локально)
+sudo apt-get install -y gnuplot
+
+# Проверка, что qt-терминал доступен:
+gnuplot -e "set terminal" | grep qt
 ```
 
 ## Структура репозитория
@@ -36,7 +40,7 @@ sudo apt-get install -y build-essential cmake ninja-build \
 | # | директория | Глава книги |
 |---|---|---|
 | 01 | `ch01_introduction` | Введение |
-| 02 | `ch02_vectors_part1` | Векторы, часть 1 |
+| 02 | [`ch02_vectors_part1`](ch02_vectors_part1/README.md) | Векторы, часть 1 |
 | 03 | `ch03_vectors_part2` | Векторы, часть 2 |
 | 04 | `ch04_vector_applications` | Применение векторов |
 | 05 | `ch05_matrices_part1` | Матрицы, часть 1 |
@@ -63,6 +67,12 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+Для запуска примеров с графиками нужен gnuplot с терминалом `qt`:
+
+```bash
+gnuplot -e "set terminal" | grep qt
+```
+
 ## CI/CD
 
 GitHub Actions workflow (`.github/workflows/ci.yml`) выполняет:
@@ -74,7 +84,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) выполняет:
 ## Прогресс
 
 - [x] Глава 01 — Введение *(каркас + проверка Eigen)*
-- [ ] Глава 02 — Векторы, часть 1
+- [x] [Глава 02](ch02_vectors_part1/README.md) — Векторы, часть 1
 - [ ] Глава 03 — Векторы, часть 2
 - [ ] Глава 04 — Применение векторов
 - [ ] Глава 05 — Матрицы, часть 1
@@ -105,54 +115,48 @@ Mike X Cohen. *Practical Linear Algebra for Data Science: From Core Concepts to 
    ./build/ch02_vectors_part1/ex_2_1
    ```
 
-4. **Визуализация.** Примеры, строящие графики, используют `gnuplot-iostream`. По умолчанию данные отправляются в gnuplot через пайп, и открывается окно с графиком.
+4. **Визуализация.** Примеры и упражнения с графиками используют `gnuplot-iostream` и открывают интерактивное окно `qt` во время выполнения. Окно остается открытым до закрытия вручную.
 
-   **Если gnuplot не установлен** — пример завершится с ошибкой. Установите:
+   **Требования:** gnuplot с терминалом `qt` (или `wxt`, `x11`). Проверить:
 
    ```bash
-   # Ubuntu/Debian — с GUI (X11)
-   sudo apt-get install gnuplot
-
-   # Ubuntu/Debian — без GUI, только терминал (для CI)
-   sudo apt-get install gnuplot-nox
-
-   # macOS
-   brew install gnuplot
+   gnuplot -e "set terminal" | grep -E "qt|wxt|x11"
    ```
 
-   **Три режима работы с графиками** (переключаются через `common/plot_helpers.hpp`):
+   Если ни один терминал не найден — установите gnuplot с GUI:
 
-   | Режим | Когда использовать | Что делает |
-   |---|---|---|
-   | `Pipe` (по умолчанию) | Локальная работа, интерактив | Открывает окно gnuplot, данные идут через stdin |
-   | `File` | Отладка, CI, медленные вычисления | Сохраняет `.dat` и `.gnuplot`, запускает gnuplot из файла |
-   | `Silent` | Автотесты | Только пишет данные в `.dat`, gnuplot не вызывается |
+   ```bash
+   # Ubuntu/Debian
+   sudo apt-get install gnuplot
+   ```
+
+   **В CI** примеры с графиками не запускаются — только собираются, потому что в GitHub Actions нет дисплея.
 
    **Типичный сценарий работы:**
 
    ```cpp
    #include "plot_helpers.hpp"
-   #include <Eigen/Dense>
 
    int main() {
-       Eigen::VectorXd x = Eigen::VectorXd::LinSpaced(100, 0, 2 * M_PI);
-       Eigen::VectorXd y = x.array().sin();
+       Eigen::Vector2d v(3.0, 2.0);
 
-       plot::line(x, y, "sin(x)", "x", "y");
+       Gnuplot gp = plot::make_interactive();
+       plot::setup_interactive(gp, "Вектор (3, 2)");
+       gp << "set xrange [-1:5]\nset yrange [-1:5]\n";
+       plot::draw_vector(gp, v, "v = (3, 2)");
+
        return 0;
    }
    ```
 
-5. Для отладки визуализации можно переключиться на запись данных в файл (см. `common/plot_helpers.hpp`).
-
 ## Вклад и обратная связь
 
-Репозиторий учебный и личный, но Issues и Pull Request'ы приветствуются:
+Репозиторий учебный, Issues и Pull Request'ы приветствуются:
 
-- нашёл ошибку в реализации примера — открой Issue с указанием главы и номера;
+- нашел ошибку в реализации примера — открой Issue с указанием главы и номера;
 - видишь более идиоматичное решение на Eigen — Pull Request с пояснением;
 - заметил расхождение с результатами из книги — приложи скриншот или вывод Python-версии.
 
 ## Лицензия
 
-Код в этом репозитории распространяется под **MIT License** (см. файл [LICENSE](LICENSE)). Сама книга, её текст, оригинальные примеры и иллюстрации принадлежат автору (Mike X Cohen) и издателю (O'Reilly Media). Этот репозиторий — независимая учебная работа и не аффилирован с автором или издателем.
+Код в этом репозитории распространяется под [**MIT License**](LICENSE). Сама книга, ее текст, оригинальные примеры и иллюстрации принадлежат автору (Mike X Cohen) и издателю (O'Reilly Media). Этот репозиторий — независимая учебная работа и не аффилирован с автором или издателем.

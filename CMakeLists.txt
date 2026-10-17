@@ -20,6 +20,7 @@ add_subdirectory(common)
 
 # Главы
 add_subdirectory(ch01_introduction)
+add_subdirectory(ch02_vectors_part1)
 
 # Тесты
 option(BUILD_TESTING "Build tests" ON)

@@ -20,3 +20,8 @@ gtest_discover_tests(test_eigen_setup)
 add_executable(test_ch01 test_ch01.cpp)
 target_link_libraries(test_ch01 PRIVATE ch01 GTest::gtest_main)
 gtest_discover_tests(test_ch01)
+
+# --- Тесты главы 2 ---
+add_executable(test_ch02 test_ch02.cpp)
+target_link_libraries(test_ch02 PRIVATE ch02 GTest::gtest_main)
+gtest_discover_tests(test_ch02)
